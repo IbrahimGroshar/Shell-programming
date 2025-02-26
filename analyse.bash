@@ -1,50 +1,60 @@
-##!/bin/bash
+#!/bin/bash
 
-## Checks if a valid url is provided  ##
-if [ -z "$1" ]; then
-  echo "Please provide an url as argument."
-  exit 1
+# Check if an argument (URL) was provided
+if [ $# -ne 1 ]; then
+    echo "Usage: $0 <url>"
+    exit 1
 fi
 
-## Downloads the file ##
-wget "$1" -O "downloaded_file"
+url="$1"
 
-## Checks if the download was successful ##
-if [ "$?" -ne 0 ]; then
-  echo "Download failed."
-  exit 1
+# Get filename from URL
+filename="downloaded_file_$(date +%F_%H-%M-%S)"
+
+# Download the file using curl
+echo "Downloading file from $url..."
+curl -s -o "$filename" "$url"
+
+# Check if download was successful
+if [ ! -f "$filename" ]; then
+    echo "Error: Failed to download the file."
+    exit 1
 fi
 
-## Determines the type of the file ##
-file_type=$(file "downloaded_file" | cut -d ":" -f 2 | sed 's/^ //')
+# Determine file type
+mime_type=$(file -b --mime-type "$filename")
 
-## Analyzes the file based on its type ##
-if [[ "$file_type" == *"text"* ]]; then
-  ## Get the number of lines, words, and spaces in the file ##
-  lines=$(wc -l "downloaded_file" | awk '{print $1}')
-  words=$(wc -w "downloaded_file" | awk '{print $1}')
-  spaces=$(grep -o " " "downloaded_file" | wc -l)
+echo "File downloaded: $filename"
+echo "MIME Type: $mime_type"
 
-  ## Output of the results ##
-  echo "Lines: $lines"
-  echo "Words: $words"
-  echo "Spaces: $spaces"
+# If it's a text file, analyze it as text
+if [[ "$mime_type" == text/* ]]; then
+    echo "Analyzing as a text file..."
+    line_count=$(wc -l < "$filename")
+    word_count=$(wc -w < "$filename")
+    space_count=$(grep -o " " "$filename" | wc -l)
+    first_line=$(head -n 1 "$filename")
+    last_line=$(tail -n 1 "$filename")
 
-  ## Print the first and last lines of the file ##
-  echo "First line: $(head -n 1 "downloaded_file")"
-  echo "Last line: $(tail -n 1 "downloaded_file")"
+    echo "Lines: $line_count"
+    echo "Words: $word_count"
+    echo "Spaces: $space_count"
+    echo "First Line: $first_line"
+    echo "Last Line: $last_line"
 
-elif [[ "$file_type" == *"binary"* ]]; then
-  ## This gets the size of the file in bytes ##
-  size=$(wc -c "downloaded_file" | awk '{print $1}')
-
-  ## Outputs the size of the file ##
-  echo "File size: $size bytes"
-
-  ## Shows around 10 first and 10 last bytes of the file in printable representation ##
-  echo "First 10 bytes: $(xxd -p -l 10 "downloaded_file")"
-  echo "Last 10 bytes: $(xxd -p -s $(($size-10)) -l 10 "downloaded_file")"
-
+# If it's a binary file, analyze it differently
 else
-  echo "Unknown file type: $file_type"
+    echo "Analyzing as a binary file..."
+    byte_count=$(wc -c < "$filename")
+    first_10_bytes=$(head -c 10 "$filename" | xxd -p)
+    last_10_bytes=$(tail -c 10 "$filename" | xxd -p)
+
+    echo "Size: $byte_count bytes"
+    echo "First 10 bytes: $first_10_bytes"
+    echo "Last 10 bytes: $last_10_bytes"
 fi
+
+# Open the downloaded file in a web browser
+xdg-open "$filename" &>/dev/null
+
+echo "File analysis complete!"

@@ -1,34 +1,38 @@
-clear
+#!/usr/bin/env bash
 
-# Checks that a directory was provided as an argument.
-if [ $# -ne 1 ]; then
-        echo "Using:  $0 <dir>"
-        exit 1
+# Ensure an argument is provided
+if [[ $# -ne 1 ]]; then
+    echo "Usage: $0 <directory>"
+    exit 1
 fi
 
-# Checks that the directory exists
-if [ ! -d "$1" ]; then
-        echo "Error: $1 is not a directory"
-        exit 1
+# Assign variables
+DIR="$1"
+TIMESTAMP=$(date +"%Y-%m-%d_%H-%M-%S")
+BACKUP_FILE="/tmp/backup_${TIMESTAMP}.tar.gz"
+
+# Check if directory exists
+if [[ ! -d "$DIR" ]]; then
+    echo "Error: Directory '$DIR' does not exist."
+    exit 2
 fi
 
-# Get the base name of the directory
-dir_basename=$(basename"$1")
-
-# Generates the name of the backup file
-backup_file="tmp/${dir_basename}_backup_$(date +%F_%H-%M-%S).tar.gz"
-
-# Checks if the backup file exitsts
-
-if [ -e "$backup_file" ]; then
-        echo "Error: the backup file $backup_file already exists"
-        exit 1
-
+# Check if backup file already exists
+if [[ -f "$BACKUP_FILE" ]]; then
+    echo "Error: Backup file '$BACKUP_FILE' already exists."
+    exit 3
 fi
 
-# Creates the backup file
-echo "Creating the backup file of $1..."
-start_time=$(date +%s)
-tar -czf "$backup_file" "$1"
-end_time=$(date +%s)
-echo "Backup complete.\nTime taken: $((end_time - start_time)) seconds."
+# Start timing the backup
+START_TIME=$(date +%s)
+
+# Create the backup
+tar -czf "$BACKUP_FILE" "$DIR"
+
+# Stop timing
+END_TIME=$(date +%s)
+ELAPSED_TIME=$((END_TIME - START_TIME))
+
+# Print success message
+echo "Backup completed: $BACKUP_FILE"
+echo "Time taken: ${ELAPSED_TIME} seconds."

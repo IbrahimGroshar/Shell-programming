@@ -1,30 +1,44 @@
-##!/bin/bash
+#!/bin/bash
 
-## Checks that a directory was provided as an argument ##
+# Check if a directory argument is provided
 if [ $# -ne 1 ]; then
-  echo "Usage: $0 <path>"
-  exit 1
+    echo "Usage: $0 <directory>"
+    exit 1
 fi
 
-## Checks if the directory exists ##
+# Check if the given path exists and is a directory
 if [ ! -d "$1" ]; then
-  echo "Error: $1 is not a directory"
-  exit 1
+    echo "Error: Directory '$1' not found."
+    exit 1
 fi
 
-## Recursively finds all files in the directory and their sizes ##
-filesizes=$(find "$1" -type f -printf "%s %p\n")
+dir_path="$1"
 
-## Counts the number of files and the total file size ##
-num_files=$(echo "$filesizes" | wc -l)
-total_size=$(echo "$filesizes" | awk '{sum += $1} END {print sum}')
+# Find all files, sort by size, and store results
+file_list=$(find "$dir_path" -type f -exec du -b {} + | sort -nr | head -5)
 
-## Sorting the files by size, from largest to smallest and get the top 5 ##
-top_files=$(echo "$filesizes" | sort -nr | head -n 5)
+# If no files are found, exit
+if [ -z "$file_list" ]; then
+    echo "No files found in the given directory."
+    exit 0
+fi
 
-## Ooutput the report ##
-echo "Top 5 largest files in $1:"
-echo "$top_files"
-echo "Total size of top 5 files: $total_size bytes"
-echo "Total number of files scanned: $num_files"
-echo "Total size of all files: $(du -sh $1 | cut -f1)"
+echo "Top 5 largest files in '$dir_path':"
+echo "-----------------------------------"
+total_size=0
+
+while read -r size file; do
+    file_type=$(file -b --mime-type "$file")  # Get MIME type of the file
+    echo "Size: $size bytes | Type: $file_type | File: $file"
+    total_size=$((total_size + size))
+done <<< "$file_list"
+
+echo "-----------------------------------"
+echo "Total size of top 5 largest files: $total_size bytes"
+
+# Count total number of files and their cumulative size
+total_files=$(find "$dir_path" -type f | wc -l)
+total_dir_size=$(du -sb "$dir_path" | cut -f1)
+
+echo "Total files scanned: $total_files"
+echo "Total size of all files: $total_dir_size bytes"
